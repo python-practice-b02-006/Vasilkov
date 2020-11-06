@@ -21,41 +21,43 @@ def rand_color():
 
 class Ball:
 
-    def __init__(self, coord, speed, radius=20, color=None):
+    def __init__(self, pos, speed, radius=20):
 
-        self.coord = coord
+        self.pos = pos
         self.speed = speed
-        self.color=rand_color()
-        self.color = color
+        self.color = rand_color()
         self.radius = radius
         self.is_alive = True
 
     def refract(self):
-        if self.pos[0] > 795 - self.radius:
-            self.speed[0] *= -1
+        if self.pos[0] > 800 - self.radius:
+            self.speed[0] *= -0.9
             self.pos = (self.pos[0] - 3, self.pos[1])
-        if self.pos[0] < self.radius + 5:
-            self.speed[0] *= -1
+        if self.pos[0] < self.radius + 3:
+            self.speed[0] *= -0.9
             self.pos = (self.pos[0] + 3, self.pos[1])
-        if self.pos[1] > 595 - self.radius:
-            self.speed[1] *= -1
-            self.pos = (self.pos[0], self.pos[1] - 3)
-        if self.pos[1] < self.radius + 105:
-            self.speed[1] *= -1
-            self.pos = (self.pos[0], self.pos[1] + 3)
+        if self.pos[1] > 600 - self.radius:
+            self.speed[1] *= -0.9
+            self.pos = (self.pos[0], self.pos[1] - 1)
+        if self.pos[1] < self.radius + 3:
+            self.speed[1] *= -0.9
+            self.pos = (self.pos[0], self.pos[1] + 1)
 
     def move(self):
         self.refract()
         self.speed[1] += 1
-        self.coord[0] += self.speed[0]
-        self.coord[1] += self.speed[1]
+        self.pos = list(self.pos)
+        self.pos[0] += self.speed[0]
+        self.pos[1] += self.speed[1]
 
     def draw(self):
-        pg.draw.circle(screen, rand_color(), self.coord, self.radius)
+        pg.draw.circle(screen, self.color, self.pos, self.radius)
 
-class cannon:
-    def __init__(self, coord=[30, SCREEN_SIZE[1] // 2], angle=0, max_pow=50, min_pow=5, color=rand_color()):
-        self.coord = coord
+
+class Cannon:
+
+    def __init__(self, pos=[30, SCREEN_SIZE[1] // 2], angle=0, max_pow=50, min_pow=5, color=rand_color()):
+        self.pos = pos
         self.angle = angle
         self.max_pow = max_pow
         self.min_pow = min_pow
@@ -74,7 +76,7 @@ class cannon:
     def boom(self):
         speed = self.pow
         angle = self.angle
-        ball = Ball(list(self.coord), [int(speed * np.cos(angle)), int(speed * np.sin(angle))])
+        ball = Ball(list(self.pos), [int(speed * np.cos(angle)), int(speed * np.sin(angle))])
         self.pow = self.min_pow
         self.active = False
         return ball
@@ -83,31 +85,42 @@ class cannon:
         cannon_shape = []
         vec_1 = np.array([int(5 * np.cos(self.angle - np.pi / 2)), int(5 * np.sin(self.angle - np.pi / 2))])
         vec_2 = np.array([int(self.pow * np.cos(self.angle)), int(self.pow * np.sin(self.angle))])
-        gun_pos = np.array(self.coord)
-        cannon_shape.append((gun_pos + vec_1).tolist())
-        cannon_shape.append((gun_pos + vec_1 + vec_2).tolist())
-        cannon_shape.append((gun_pos + vec_2 - vec_1).tolist())
-        cannon_shape.append((gun_pos - vec_1).tolist())
+        cannon_pos = np.array(self.pos)
+        cannon_shape.append((cannon_pos + vec_1).tolist())
+        cannon_shape.append((cannon_pos + vec_1 + vec_2).tolist())
+        cannon_shape.append((cannon_pos + vec_2 - vec_1).tolist())
+        cannon_shape.append((cannon_pos - vec_1).tolist())
         pg.draw.polygon(screen, self.color, cannon_shape)
 
+    def move(self, v):
+        if (self.pos[1] > 30 or v > 0) and (self.pos[1] < SCREEN_SIZE[1] - 30 or v < 0):
+            self.pos[1] += v
 
-class actions:
+    def set_angle(self, target_pos):
+        self.angle = np.arctan2(target_pos[1] - self.pos[1], target_pos[0] - self.pos[0])
+
+
+class Actions:
     def __init__(self):
         self.balls = []
-        self.cannon = cannon()
+        self.cannon = Cannon()
 
     def current_ev(self, events):
         done = False
         for event in events:
             if event.type == pg.QUIT:
                 done = True
+            elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_UP:
+                    self.cannon.move(-5)
+                elif event.key == pg.K_DOWN:
+                    self.cannon.move(5)
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     self.cannon.start()
             elif event.type == pg.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.balls.append(self.cannon.boom())
-
         return done
 
     def draw(self):
@@ -115,21 +128,35 @@ class actions:
             i.draw()
         self.cannon.draw()
 
-    def do(self, event):
-        done = self.current_ev(event)
-        self.draw()
-        return done
+    def do(self, events):
+       done = self.current_ev(events)
 
+       if pg.mouse.get_focused():
+            mouse_pos = pg.mouse.get_pos()
+            self.cannon.set_angle(mouse_pos)
+       self.move()
+       self.draw()
+
+       return done
+    def move(self):
+        dead_balls = []
+        for i, ball in enumerate(self.balls):
+            ball.move()
+            if not ball.is_alive:
+                dead_balls.append(i)
+        for i in reversed(dead_balls):
+            self.balls.pop(i)
+        self.cannon.charge()
 
 clock = pg.time.Clock()
 done = False
 
-Actions = actions()
+actions = Actions()
 while not done:
     clock.tick(15)
     screen.fill(BLACK)
 
-    done = Actions.do(pg.event.get())
+    done = actions.do(pg.event.get())
 
     pg.display.flip()
 
