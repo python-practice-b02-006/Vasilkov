@@ -30,18 +30,18 @@ class Ball:
         self.is_alive = True
 
     def refract(self):
-        if self.pos[0] > 800 - self.radius:
-            self.speed[0] *= -0.9
-            self.pos = (self.pos[0] - 3, self.pos[1])
-        if self.pos[0] < self.radius + 3:
-            self.speed[0] *= -0.9
-            self.pos = (self.pos[0] + 3, self.pos[1])
-        if self.pos[1] > 600 - self.radius:
-            self.speed[1] *= -0.9
-            self.pos = (self.pos[0], self.pos[1] - 1)
-        if self.pos[1] < self.radius + 3:
-            self.speed[1] *= -0.9
-            self.pos = (self.pos[0], self.pos[1] + 1)
+        if self.pos[0] > 795 - self.radius:
+            self.speed[0] *= -0.8
+            self.pos = (self.pos[0] - 5, self.pos[1])
+        if self.pos[0] < self.radius + 5:
+            self.speed[0] *= -0.8
+            self.pos = (self.pos[0] + 5, self.pos[1])
+        if self.pos[1] > 595 - self.radius:
+            self.speed[1] *= -0.8
+            self.pos = (self.pos[0], self.pos[1]-5)
+        if self.pos[1] < self.radius+3:
+            self.speed[1] *= -0.8
+            self.pos = (self.pos[0], self.pos[1]+5)
 
     def move(self):
         self.refract()
@@ -49,7 +49,8 @@ class Ball:
         self.pos = list(self.pos)
         self.pos[0] += self.speed[0]
         self.pos[1] += self.speed[1]
-
+        if self.speed[0] ** 2 + self.speed[1] ** 2 < 5 ** 2 and self.pos[1] > SCREEN_SIZE[1] - 2 * self.radius:
+            self.is_alive = False
     def draw(self):
         pg.draw.circle(screen, self.color, self.pos, self.radius)
 
@@ -130,14 +131,13 @@ class Actions:
 
     def do(self, events):
        done = self.current_ev(events)
-
        if pg.mouse.get_focused():
             mouse_pos = pg.mouse.get_pos()
             self.cannon.set_angle(mouse_pos)
        self.move()
        self.draw()
-
        return done
+
     def move(self):
         dead_balls = []
         for i, ball in enumerate(self.balls):
@@ -148,9 +148,15 @@ class Actions:
             self.balls.pop(i)
         self.cannon.charge()
 
+class Target:
+    pass
+
+class Table_of_scores:
+    pass
+
+
 clock = pg.time.Clock()
 done = False
-
 actions = Actions()
 while not done:
     clock.tick(15)
