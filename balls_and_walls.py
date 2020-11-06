@@ -101,10 +101,47 @@ class Cannon:
         self.angle = np.arctan2(target_pos[1] - self.pos[1], target_pos[0] - self.pos[0])
 
 
+class Target:
+
+    def __init__(self, radius):
+        self.pos = [randint(radius, SCREEN_SIZE[0] - radius), randint(radius, SCREEN_SIZE[1] - radius)]
+        self.radius = radius
+        self.color = rand_color()
+
+    def check_collision(self, ball):
+        dist = sum([(self.pos[i] - ball.pos[i]) ** 2 for i in range(2)]) ** 0.5
+        return dist <= self.radius + ball.radius
+
+    def draw(self, screen):
+
+        pg.draw.circle(screen, self.color, self.pos, self.radius)
+
+
+class Table_of_scores:
+    def __init__(self, t_destr=0, b_used=0):
+        self.t_destr = t_destr
+        self.b_used = b_used
+        self.font = pg.font.SysFont("Times New Roman", 25)
+
+    def get_score(self):
+        return self.t_destr - self.b_used
+
+    def draw(self):
+        score_surf = []
+        score_surf.append(self.font.render("Destroyed: {}".format(self.t_destr), True, rand_color()))
+        score_surf.append(self.font.render("Balls used: {}".format(self.b_used), True, rand_color()))
+        score_surf.append(self.font.render("Total: {}".format(self.get_score()), True, rand_color()))
+        for i in range(3):
+            screen.blit(score_surf[i], [10, 10 + 30*i])
+
+
 class Actions:
-    def __init__(self):
+    def __init__(self, n_targets=3):
         self.balls = []
         self.cannon = Cannon()
+        self.targets = []
+        self.table = Table_of_scores()
+        self.n_targets = n_targets
 
     def current_ev(self, events):
         done = False
@@ -122,20 +159,34 @@ class Actions:
             elif event.type == pg.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.balls.append(self.cannon.boom())
+                    self.table.b_used += 1
         return done
 
+    def get_new_targets(self):
+        for i in range(self.n_targets):
+            current_scores=self.table.get_score()
+            temp=Target(randint(max(1, 30 - 2*max(0, current_scores)),
+                30 - max(0, current_scores)))
+            self.targets.append(temp)
     def draw(self):
-        for i in self.balls:
-            i.draw()
+        for ball in self.balls:
+            ball.draw()
+        for target in self.targets:
+            target.draw(screen)
         self.cannon.draw()
-
+        self.table.draw()
     def do(self, events):
        done = self.current_ev(events)
        if pg.mouse.get_focused():
             mouse_pos = pg.mouse.get_pos()
             self.cannon.set_angle(mouse_pos)
        self.move()
+       self.collide()
        self.draw()
+
+       if len(self.targets) == 0 and len(self.balls) == 0:
+           self.get_new_targets()
+
        return done
 
     def move(self):
@@ -148,11 +199,20 @@ class Actions:
             self.balls.pop(i)
         self.cannon.charge()
 
-class Target:
-    pass
+    def collide(self):
+        collisions = []
+        targets_c = []
+        for i, ball in enumerate(self.balls):
+            for j, target in enumerate(self.targets):
+                if target.check_collision(ball):
+                    collisions.append([i, j])
+                    targets_c.append(j)
+        targets_c.sort()
+        for j in reversed(targets_c):
+            self.table.t_destr += 1
+            self.targets.pop(j)
 
-class Table_of_scores:
-    pass
+
 
 
 clock = pg.time.Clock()
