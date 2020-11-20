@@ -52,8 +52,7 @@ class Ball:
         if self.speed[0] ** 2 + self.speed[1] ** 2 < 5 ** 2 and self.pos[1] > SCREEN_SIZE[1] - 2 * self.radius:
             self.is_alive = False
     def draw(self):
-        pg.draw.circle(screen, self.color, self.pos, self.radius)
-
+        pg.draw.circle(screen, self.color, [int(self.pos[0]), int(self.pos[1])], int(self.radius))
 
 class Cannon:
 
